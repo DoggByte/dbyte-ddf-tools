@@ -103,7 +103,7 @@ def main():
       titel=titel,                  # Original title (str)
       beschreibung=beschreibung,    # Description (str)
       gesamtdauer=gesamtdauer if gesamtdauer is not None else '',           # Duration in ms
-      gesamtdauer_min=gesamtdauer_min if gesamtdauer is not None else '',   # Duration in min
+      gesamtdauer_min=gesamtdauer_min,  # Duration in min
       info_titel=info_titel,        # Formatted info title
       cover_art_url=cover_art_url   # Cover art URL
     )
