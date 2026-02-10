@@ -1,1 +1,1 @@
-use the db2rows.py script to populate this folder
+This is the folder used as a target by the Python script `db2rows.py`
