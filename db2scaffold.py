@@ -4,9 +4,10 @@ import logging
 import re
 import urllib.request
 from serie_db import SerieDB
+from utils import expand_umlauts
 CONFIG = {
   'db_path': os.getenv('DDF_DB_PATH', 'db/serie.json'),
-  'output_dir': os.getenv('DDF_OUTPUT_DIR', 'dist'),
+  'output_dir': os.getenv('DDF_SCAFFOLD_DIR', 'dist'),
   'template_path': os.getenv('DDF_TEMPLATE_PATH', 'templates/tmpl_episode_info.txt')
 }
 def main():
@@ -20,17 +21,6 @@ def main():
   titles = []   # List to store original titles
   cover_art_urls = []  # List to store cover art URLs
   episode_durations = []  # List to store total durations
-
-  # Function to expand German umlauts to their English equivalents
-  def expand_umlauts(text):
-    replacements = {
-      'ä': 'ae', 'ö': 'oe', 'ü': 'ue',
-      'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue',
-      'ß': 'ss'
-    }
-    for k, v in replacements.items():
-      text = text.replace(k, v)
-    return text
 
   # Read the customizable template for info.txt from external file
   with open(CONFIG['template_path'], 'r', encoding='utf-8') as tmpl_file:
