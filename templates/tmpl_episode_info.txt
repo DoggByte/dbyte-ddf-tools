@@ -1,0 +1,15 @@
+{info_titel}
+Spiellänge: {gesamtdauer_min} min
+
+{beschreibung}
+---
+DO NOT PARSE BELOW THIS LINE (for reference only)
+Available variables:
+	info_titel        # Formatted title: '<nummer>. Die Drei ??? - <titel>' or '<nummer>. Die Drei ??? <titel>' if titel starts with 'und'
+	nummer            # Track number as integer (e.g., 123)
+	nummer_str        # Track number as zero-padded string (e.g., '123')
+	titel             # Original episode title (string)
+	beschreibung      # Episode description (string)
+	gesamtdauer       # Total duration in milliseconds (int or string)
+	gesamtdauer_min   # Total duration in minutes (integer, ms/60000)
+	cover_art_url     # Cover art image URL (string, may be empty)
