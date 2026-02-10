@@ -1,14 +1,16 @@
 import json
 import os
 import re
+CONFIG = {
+  "input_path": os.getenv('INPUT_PATH', 'db/serie.json'),
+  "output_dir": os.getenv('OUTPUT_DIR', 'db/rows')
+}
 
 def main():
-  input_path = 'db/serie.json'
-  output_dir = 'db/rows'
 
-  os.makedirs(output_dir, exist_ok=True)
+  os.makedirs(CONFIG["output_dir"], exist_ok=True)
 
-  with open(input_path, 'r', encoding='utf-8') as f:
+  with open(CONFIG["input_path"], 'r', encoding='utf-8') as f:
     data = json.load(f)
 
   for entry in data.get('serie', []):
@@ -23,10 +25,10 @@ def main():
     # Ensure filename is only digits and .json
     if not re.fullmatch(r'\d{3}\.json', filename):
       continue
-    output_path = os.path.join(output_dir, filename)
+    output_path = os.path.join(CONFIG["output_dir"], filename)
     # Export entry as pretty JSON
     with open(output_path, 'w', encoding='utf-8') as out_f:
       json.dump(entry, out_f, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
-    main()
+  main()
