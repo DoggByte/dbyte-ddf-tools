@@ -18,3 +18,14 @@ def expand_umlauts(text):
   for k, v in replacements.items():
     text = text.replace(k, v)
   return text
+
+def write_file(path: str, content: str):
+    """
+    Utility to write content to a file with utf-8 encoding.
+    
+    Args:
+        path: Destination file path
+        content: String content to write
+    """
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content)

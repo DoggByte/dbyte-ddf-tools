@@ -3,126 +3,160 @@ import socket
 import logging
 import re
 import urllib.request
+import urllib.error
+from typing import List, Dict, Any, Optional
+
 from serie_db import SerieDB
-from utils import expand_umlauts
+from utils import expand_umlauts, write_file
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
+
 CONFIG = {
-  'db_path': os.getenv('DDF_DB_PATH', 'db/serie.json'),
-  'output_dir': os.getenv('DDF_SCAFFOLD_DIR', 'dist'),
-  'template_path': os.getenv('DDF_TEMPLATE_PATH', 'templates/tmpl_episode_info.txt')
+    'db_path': os.getenv('DDF_DB_PATH', 'db/serie.json'),
+    'output_dir': os.getenv('DDF_SCAFFOLD_DIR', 'dist'),
+    'template_path': os.getenv('DDF_TEMPLATE_PATH', 'templates/tmpl_episode_info.txt'),
+    'split_marker': '---\nDO NOT PARSE BELOW THIS LINE'
 }
-def main():
 
-  # Load the database
-  db = SerieDB(CONFIG['db_path'])
-  # Get all series, sorted by track number (nummer)
-  series = sorted(db.get_all_series(), key=lambda s: s.get('nummer', 0))
 
-  outputs = []  # List to store folder-friendly output lines
-  titles = []   # List to store original titles
-  cover_art_urls = []  # List to store cover art URLs
-  episode_durations = []  # List to store total durations
+def load_template(path: str) -> str:
+    """Reads and parses the template file, removing documentation sections."""
+    try:
+        with open(path, 'r', encoding='utf-8') as tmpl_file:
+            content = tmpl_file.read()
 
-  # Read the customizable template for info.txt from external file
-  with open(CONFIG['template_path'], 'r', encoding='utf-8') as tmpl_file:
-    tmpl_episode_info_full = tmpl_file.read()
-  # Remove non-parsable section (reference/documentation) if present
-  split_marker = '---\nDO NOT PARSE BELOW THIS LINE'
-  if split_marker in tmpl_episode_info_full:
-    tmpl_episode_info = tmpl_episode_info_full.split(split_marker)[0].rstrip()
-  else:
-    tmpl_episode_info = tmpl_episode_info_full
+        if CONFIG['split_marker'] in content:
+            return content.split(CONFIG['split_marker'])[0].rstrip()
+        return content
+    except FileNotFoundError:
+        logger.error(f"Template file not found: {path}")
+        raise
+    except Exception as e:
+        logger.error(f"Error reading template {path}: {e}")
+        raise
 
-  for serie in series:
-    nummer = serie.get('nummer', 0)  # Track number (int)
-    titel = serie.get('titel', '')   # Original title (str)
-    nummer_str = str(nummer).zfill(3)  # Track number as zero-padded string (e.g. '001')
-    gesamtdauer = serie.get('gesamtdauer', None)  # Total duration in ms (int or None)
-    beschreibung = serie.get('beschreibung', '')  # Description (str)
-    episode_durations.append(str(gesamtdauer) if gesamtdauer is not None else '')
-    # Extract cover art URL from 'links' child if present
-    links = serie.get('links', {})
-    cover_art_url = ''
-    if isinstance(links, dict):
-      cover_art_url = links.get('cover', '')
-    cover_art_urls.append(cover_art_url)
-    # Compose info_titel: '<nummer>. Die Drei ??? - <titel>' or '<nummer>. Die Drei ??? <titel>' if titel starts with 'und'
-    info_titel_part1 = f"{nummer}. "
+
+def get_info_title(nummer: int, titel: str) -> str:
+    """Composes the formatted info title."""
+    prefix = f"{nummer}. "
     if titel.strip().lower().startswith("und"):
-      info_titel_part2 = f"Die Drei ??? {titel}"
-    else:
-      info_titel_part2 = f"Die Drei ??? - {titel}"
-    info_titel = info_titel_part1 + info_titel_part2
-    # Convert duration from ms to minutes (int)
-    gesamtdauer_min = int(int(gesamtdauer) / 60000) if gesamtdauer is not None else 0
+        return f"{prefix}Die Drei ??? {titel}"
+    return f"{prefix}Die Drei ??? - {titel}"
 
-    # Create a folder name friendly version of the title
+
+def get_folder_name(nummer_str: str, titel: str) -> str:
+    """Creates a folder name friendly version of the title."""
     titel_expanded = expand_umlauts(titel)
     # Remove special characters except spaces, preserve case
-    titel_folder = re.sub(r'[^a-zA-Z0-9 ]', '', titel_expanded)
+    titel_sanitized = re.sub(r'[^a-zA-Z0-9 ]', '', titel_expanded)
+    return f"{nummer_str} - {titel_sanitized}"
 
-    # Format output line for folder name and tracking
-    output = f"{nummer_str} - {titel_folder}"
-    outputs.append(output)
-    titles.append(titel)
 
-    # Create the folder in the dist directory using the output string
-    folder_path = os.path.join(CONFIG['output_dir'], output)
-    if output and not os.path.exists(folder_path):
-      os.makedirs(folder_path)
+def download_cover(url: str, dest_path: str, identifier: str):
+    """Downloads cover art if it doesn't exist."""
+    if os.path.exists(dest_path):
+        logger.info(f"Cover art already exists for {identifier}, skipping download.")
+        return
 
-    # Download the cover art if URL is present and file does not already exist
-    if cover_art_url:
-      cover_path = os.path.join(folder_path, f'{nummer_str}.jpg')
-      if os.path.exists(cover_path):
-        print(f"Cover art already exists for {output} at {cover_path}, skipping download.")
-      else:
+    try:
+        urllib.request.urlretrieve(url, dest_path)
+        logger.info(f"Downloaded cover art for {identifier} to {dest_path}")
+    except (urllib.error.URLError, urllib.error.HTTPError, socket.timeout) as e:
+        logger.warning(f"Failed to download cover art for {identifier}: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error downloading cover art for {identifier}: {e}")
+        raise
+
+
+def main():
+    try:
+        db = SerieDB(CONFIG['db_path'])
+    except Exception as e:
+        logger.error(f"Failed to load database: {e}")
+        return
+
+    series = sorted(db.get_all_series(), key=lambda s: s.get('nummer', 0))
+    tmpl_episode_info = load_template(CONFIG['template_path'])
+
+    # Ensure output directory exists
+    os.makedirs(CONFIG['output_dir'], exist_ok=True)
+
+    outputs = []
+    titles = []
+    cover_art_urls = []
+    episode_durations = []
+
+    for serie in series:
+        nummer = serie.get('nummer', 0)
+        titel = serie.get('titel', '')
+        nummer_str = str(nummer).zfill(3)
+        gesamtdauer = serie.get('gesamtdauer')  # Can be None
+        beschreibung = serie.get('beschreibung', '')
+
+        # Collect data for summary files
+        episode_durations.append(str(gesamtdauer) if gesamtdauer is not None else '')
+        titles.append(titel)
+
+        links = serie.get('links', {})
+        cover_art_url = links.get('cover', '') if isinstance(links, dict) else ''
+        cover_art_urls.append(cover_art_url)
+
+        # Process title and folder name
+        info_titel = get_info_title(nummer, titel)
+        folder_name = get_folder_name(nummer_str, titel)
+        outputs.append(folder_name)
+
+        # Duration conversion
+        gesamtdauer_min = int(gesamtdauer) // 60000 if gesamtdauer is not None else 0
+
+        # Create folder
+        folder_path = os.path.join(CONFIG['output_dir'], folder_name)
+        os.makedirs(folder_path, exist_ok=True)
+
+        # Download cover
+        if cover_art_url:
+            cover_path = os.path.join(folder_path, f'{nummer_str}.jpg')
+            download_cover(cover_art_url, cover_path, folder_name)
+
+        # Write info.txt
+        info_path = os.path.join(folder_path, 'info.txt')
         try:
-          urllib.request.urlretrieve(cover_art_url, cover_path)
-          print(f"Downloaded cover art for {output} to {cover_path}")
-        except (urllib.error.URLError, urllib.error.HTTPError, socket.timeout) as e:
-          logging.warning(f"Failed to download cover art for {output}: {e}")
+            episode_info = tmpl_episode_info.format(
+                nummer=nummer,
+                nummer_str=nummer_str,
+                titel=titel,
+                beschreibung=beschreibung,
+                gesamtdauer=gesamtdauer if gesamtdauer is not None else '',
+                gesamtdauer_min=gesamtdauer_min,
+                info_titel=info_titel,
+                cover_art_url=cover_art_url
+            )
+            write_file(info_path, episode_info)
+        except KeyError as e:
+            logger.error(f"Template formatting error: missing key {e}")
         except Exception as e:
-          logging.error(f"Unexpected error downloading cover art for {output}: {e}")
-          raise
+            logger.error(f"Failed to write info file for {folder_name}: {e}")
 
-    # Write episode_info to info.txt in the respective folder using the template
-    info_path = os.path.join(folder_path, 'info.txt')
-    episode_info = tmpl_episode_info.format(
-      nummer=nummer,                # Track number (int)
-      nummer_str=nummer_str,        # Track number as zero-padded string (str)
-      titel=titel,                  # Original title (str)
-      beschreibung=beschreibung,    # Description (str)
-      gesamtdauer=gesamtdauer if gesamtdauer is not None else '',           # Duration in ms
-      gesamtdauer_min=gesamtdauer_min,  # Duration in min
-      info_titel=info_titel,        # Formatted info title
-      cover_art_url=cover_art_url   # Cover art URL
-    )
-    with open(info_path, 'w', encoding='utf-8') as info_file:
-      info_file.write(episode_info)
+    # Write summary files
+    summary_files = {
+        'folder-names.txt': '\n'.join(outputs) + '\n',
+        'titles.txt': '\n'.join(titles) + '\n',
+        'cover-art-urls.txt': '\n'.join(cover_art_urls) + '\n',
+        'episodes-time-ms.txt': '\n'.join(episode_durations) + '\n'
+    }
 
-  # Write folder-friendly names to file
-  output_file = os.path.join(CONFIG['output_dir'], 'folder-names.txt')
-  with open(output_file, 'w', encoding='utf-8') as f:
-    f.write('\n'.join(outputs) + '\n')
-  print(f"Folder-friendly names written to: {output_file}")
+    for filename, content in summary_files.items():
+        path = os.path.join(CONFIG['output_dir'], filename)
+        write_file(path, content)
+        if filename == 'folder-names.txt':
+            logger.info(f"Folder-friendly names written to: {path}")
+        elif filename == 'titles.txt':
+            logger.info(f"Original titles written to: {path}")
 
-  # Write original titles to file
-  titles_file = os.path.join(CONFIG['output_dir'], 'titles.txt')
-  with open(titles_file, 'w', encoding='utf-8') as f:
-    f.write('\n'.join(titles) + '\n')
-  print(f"Original titles written to: {titles_file}")
+    logger.info(f"Scaffolding complete. Output written to: {CONFIG['output_dir']}")
 
-  # Write cover art URLs to file
-  cover_art_file = os.path.join(CONFIG['output_dir'], 'cover-art-urls.txt')
-  with open(cover_art_file, 'w', encoding='utf-8') as f:
-    f.write('\n'.join(cover_art_urls) + '\n')
 
-  # Write episode durations to file
-  durations_file = os.path.join(CONFIG['output_dir'], 'episodes-time-ms.txt')
-  with open(durations_file, 'w', encoding='utf-8') as f:
-    f.write('\n'.join(episode_durations) + '\n')
-
-  # Print the location of the folder-names file
-  print(f"Output written to: {output_file}")
 if __name__ == '__main__':
-  main()
+    main()

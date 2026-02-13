@@ -62,9 +62,10 @@ Ensure the following files exist:
    - Writes an `info.txt` file in each folder using the template and episode metadata.
 5. **Write Summary Files**: Outputs lists of folder names, titles, cover art URLs, and durations to text files in `dist/`.
 
-## Key Functions
+## Key Functions and Utilities
 
-- **expand_umlauts(text)**: Replaces German umlauts and ß with their ASCII equivalents for folder naming.
+- **expand_umlauts(text)**: Replaces German umlauts and ß with their ASCII equivalents for folder naming (imported from `utils.py`).
+- **write_file(path, content)**: Utility to write content to a file with UTF-8 encoding (imported from `utils.py`).
 - **Template Handling**: Reads and processes the `tmpl_episode_info.txt` template, supporting a split marker to ignore documentation sections.
 - **Folder and File Creation**: Uses `os.makedirs` to create folders and `urllib.request.urlretrieve` to download cover art.
 
@@ -97,9 +98,11 @@ dist/
 
 ## Dependencies
 
-- Python 3.x
-- Standard library modules: `os`, `re`, `urllib.request`
-- Local modules: `serie_db.py` (must provide `SerieDB` class)
+- Python 3.6+
+- Standard library modules: `os`, `re`, `urllib.request`, `socket`, `logging`
+- Local modules: 
+  - `serie_db.py` (provides `SerieDB` class and `Serie` type)
+  - `utils.py` (provides `expand_umlauts` and `write_file` utilities)
 
 ## License
 

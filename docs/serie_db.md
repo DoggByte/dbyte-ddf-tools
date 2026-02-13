@@ -4,7 +4,7 @@
 To use `serie_db.py` and the `SerieDB` class, the following requirements must be met:
 
 - **Python Version**: Python 3.6 or higher.
-- **Database File**: The JSON file (default: `db/serie.json`) must exist and be readable. It should contain a top-level key `serie` with a list of dictionaries, each representing a series entry.
+- **Database File**: The JSON file (default: `db/serie.json`) is automatically created if it doesn't exist.
 - **Entry Format**: Each entry should have at least a `nummer` (int) and `titel` (str). Additional fields are supported.
 - **Write Permissions**: To add or update entries, the user must have write permissions to the JSON file.
 
@@ -33,24 +33,24 @@ db = SerieDB(json_path)
 ### Methods
 
 #### get_all_series()
-- **Returns:** `List[Dict[str, Any]]`
+- **Returns:** `List[Serie]`
 - **Description:** Returns a list of all series entries in the database.
 
 #### get_serie_by_nummer(nummer)
 - **Arguments:**
   - `nummer` (`int`): The track number of the series to retrieve.
-- **Returns:** `Optional[Dict[str, Any]]`
+- **Returns:** `Optional[Serie]`
 - **Description:** Returns the series entry with the given track number, or `None` if not found.
 
 #### search_by_title(title)
 - **Arguments:**
   - `title` (`str`): The (partial) title to search for (case-insensitive).
-- **Returns:** `List[Dict[str, Any]]`
+- **Returns:** `List[Serie]`
 - **Description:** Returns a list of series entries whose titles contain the given string.
 
 #### add_serie(serie)
 - **Arguments:**
-  - `serie` (`Dict[str, Any]`): The new series entry to add.
+  - `serie` (`Serie`): The new series entry to add.
 - **Description:** Appends the new series entry to the database and saves the updated data to the JSON file.
 
 ## Data Format
@@ -99,8 +99,8 @@ If run as a script, prints:
 
 ## Dependencies
 
-- Python 3.x
-- Standard library: `json`, `typing`
+- Python 3.6+
+- Standard library: `json`, `typing`, `os`, `tempfile`, `shutil`
 
 ## License
 

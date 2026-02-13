@@ -4,7 +4,7 @@
 The following requirements must be met to use `db2rows.py` successfully:
 
 - **Python Version**: Python 3.6 or higher.
-- **Input File**: The file `db/serie.json` must exist and be a valid JSON file containing a top-level key `serie` with a list of entries. Each entry should have a unique integer `nummer` field (1-3 digits).
+- **Input File**: The file `db/serie.json` is the default input. It is automatically created if it doesn't exist (see `serie_db.py` documentation). It should contain a top-level key `serie` with a list of entries. Each entry should have a unique integer `nummer` field (1-3 digits).
 - **Output Directory**: The script will create the output directory `db/rows/` if it does not exist. The user must have write permissions to the `db/` directory.
 - **Entry Format**: Each entry in the `serie` list should be a dictionary. Only entries with a valid `nummer` (1-3 digits) will be processed.
 - **File Overwrite**: Output files in `db/rows/` will be overwritten if they already exist.
@@ -60,12 +60,11 @@ The script will create:
 
 Each file will contain the corresponding entry in compact JSON format.
 
-## Code Walkthrough
+## Dependencies
 
-- **Imports**: Uses `json`, `os`, and `re` for file handling and validation.
-- **Directory Creation**: Ensures the output directory exists.
-- **Data Loading**: Reads and parses the input JSON file.
-- **Entry Processing**: Validates and writes each entry as a separate file.
+- Python 3.6+
+- Standard library modules: `json`, `os`, `re`, `logging`
+- Local modules: `serie_db.py` (provides `SerieDB` class)
 
 ## Notes
 - Only entries with a valid `nummer` (1-3 digits) are processed.
