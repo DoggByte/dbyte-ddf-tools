@@ -1,0 +1,5 @@
+[CHAPTER]
+TIMEBASE=1/1000
+START={kapitel_timestart}
+END={kapitel_timeend}
+title={kapitel_titel}

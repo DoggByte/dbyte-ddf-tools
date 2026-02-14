@@ -17,6 +17,7 @@ CONFIG = {
     'db_path': os.getenv('DDF_DB_PATH', 'db/serie.json'),
     'output_dir': os.getenv('DDF_SCAFFOLD_DIR', 'dist'),
     'template_path': os.getenv('DDF_TEMPLATE_PATH', 'templates/tmpl_episode_info.txt'),
+    'chapter_template_path': os.getenv('DDF_CHAPTER_TEMPLATE_PATH', 'templates/tmpl_episodes_chapters.txt'),
     'split_marker': '---\nDO NOT PARSE BELOW THIS LINE'
 }
 
@@ -79,6 +80,7 @@ def main():
 
     series = sorted(db.get_all_series(), key=lambda s: s.get('nummer', 0))
     tmpl_episode_info = load_template(CONFIG['template_path'])
+    tmpl_chapters = load_template(CONFIG['chapter_template_path'])
 
     # Ensure output directory exists
     os.makedirs(CONFIG['output_dir'], exist_ok=True)
@@ -135,9 +137,29 @@ def main():
             )
             write_file(info_path, episode_info)
         except KeyError as e:
-            logger.error(f"Template formatting error: missing key {e}")
+            logger.error(f"Template formatting error in info: missing key {e}")
         except Exception as e:
             logger.error(f"Failed to write info file for {folder_name}: {e}")
+
+        # Write chapters.txt
+        chapters = serie.get('kapitel', [])
+        if chapters:
+            chapters_content = []
+            for chapter in chapters:
+                try:
+                    chapter_text = tmpl_chapters.format(
+                        kapitel_titel=chapter.get('titel', ''),
+                        kapitel_timestart=chapter.get('start', ''),
+                        kapitel_timeend=chapter.get('end', '')
+                    )
+                    chapters_content.append(chapter_text)
+                except KeyError as e:
+                    logger.error(f"Template formatting error in chapters: missing key {e}")
+            
+            if chapters_content:
+                chapters_path = os.path.join(folder_path, f'{nummer_str}-chapters.txt')
+                full_chapters_content = ';FFMETADATA1\n' + '\n'.join(chapters_content)
+                write_file(chapters_path, full_chapters_content)
 
     # Write summary files
     summary_files = {
