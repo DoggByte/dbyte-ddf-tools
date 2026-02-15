@@ -1,6 +1,7 @@
 import os
 import logging
 import json
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Union
 
 # Try to import mutagen, but allow the script to be defined even if not installed yet
@@ -17,6 +18,9 @@ CONFIG = {
     'filename_flac_list': 'flac-files-list.txt',
     'filename_all_flac_files': 'all-flac-files.txt',
     'filename_serie_flac': 'serie_flac.json',
+    'script_version': '1.00.00',
+    'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'flac_source': 'Amazon',
     # Note: filename_flac_vorbis_comment is used here to refer to the pattern requirement
 }
 
@@ -155,6 +159,11 @@ def main():
         serie_data.sort(key=get_serie_sort_key)
         
         final_json_data = {
+            "dbInfo": {
+                "version": CONFIG['script_version'],
+                "lastModified": CONFIG['timestamp'],
+                "source": CONFIG['flac_source']
+            },
             "serie": serie_data
         }
         
